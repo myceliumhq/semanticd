@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Generic semantic search sidecar -- syncs and queries a local vector index over any source that ships a SourceAdapter, loaded by module name at runtime.",
   "type": "module",
+  "packageManager": "pnpm@11.20.0",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
