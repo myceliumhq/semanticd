@@ -1,0 +1,51 @@
+{
+  "name": "@myceliumhq/semanticd",
+  "version": "0.1.0",
+  "description": "Generic semantic search sidecar -- syncs and queries a local vector index over any source that ships a SourceAdapter, loaded by module name at runtime.",
+  "type": "module",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "semantic-search",
+    "vector-search",
+    "sidecar",
+    "agent"
+  ],
+  "engines": {
+    "node": "^20.0.0 || ^22.0.0 || >=24.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/myceliumhq/semanticd.git"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "semanticd": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc -p tsconfig.test.json",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "test": "vitest run",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@myceliumhq/embed": "^0.1.0",
+    "@myceliumhq/index": "^0.1.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.7",
+    "@myceliumhq/dev-config": "^0.1.0",
+    "@types/node": "^26.1.1",
+    "semantic-release": "^25.0.8",
+    "typescript": "7.0.2",
+    "vitest": "^4.1.10"
+  }
+}
