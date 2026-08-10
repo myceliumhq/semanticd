@@ -14,9 +14,9 @@ export type Engine = {
   sync: (logger?: SyncLogger) => Promise<SyncSummary>;
 };
 
-// Wires a loaded adapter (any source, from adapter-loader.ts) to an open
-// index -- entirely generic, no knowledge of what the adapter's TId or
-// content actually represents.
+// Wires a caller-supplied adapter (any source) to an open index --
+// entirely generic, no knowledge of what the adapter's TId or content
+// actually represents.
 export async function createEngine(
   adapter: SourceAdapter<string | number>,
   embeddingProvider: EmbeddingProvider,

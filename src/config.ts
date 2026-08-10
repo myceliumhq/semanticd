@@ -1,16 +1,14 @@
 import type { EmbeddingProviderConfig } from "@myceliumhq/embed";
 
-// semanticd has no knowledge of any particular source -- it loads a
-// SourceAdapter by module name at runtime (see adapter-loader.ts) and
-// knows nothing about that module's own connection config (a URL+token, a
-// file path, whatever). Each adapter module is responsible for reading its
-// own config from its own env vars/files.
+// semanticd has no knowledge of any particular source -- the adapter itself
+// is supplied by the caller of runSemanticd() (see index.ts), not resolved
+// from anything read here. This config covers only what's genuinely
+// generic across every adapter: the HTTP port, where the index lives, and
+// how the embedding provider is configured.
 export type SemanticdConfig = {
   port: number;
   indexPath: string;
   syncIntervalMs: number;
-  adapterModule: string;
-  adapterExport: string;
   embedding: EmbeddingProviderConfig;
 };
 
@@ -69,15 +67,10 @@ function loadEmbeddingConfig(): EmbeddingProviderConfig {
 // env-only config convention -- no config file parsing, so a fresh sidecar
 // (a container, a systemd unit) works with nothing but exported env vars.
 export function loadSemanticdConfig(): SemanticdConfig {
-  const adapterModule = required("SEMANTICD_ADAPTER_MODULE");
-  const adapterExport = process.env.SEMANTICD_ADAPTER_EXPORT ?? "createAdapter";
-
   return {
     port: optionalPositiveInt("SEMANTICD_PORT", 4499),
     indexPath: process.env.SEMANTICD_INDEX_PATH ?? "./semanticd.db",
     syncIntervalMs: optionalPositiveInt("SEMANTICD_SYNC_INTERVAL_MS", 15 * 60_000),
-    adapterModule,
-    adapterExport,
     embedding: loadEmbeddingConfig(),
   };
 }

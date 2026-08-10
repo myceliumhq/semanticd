@@ -1,13 +1,40 @@
-#!/usr/bin/env node
 import { createEmbeddingProvider } from "@myceliumhq/embed";
-import { loadAdapter } from "./adapter-loader.js";
-import { loadSemanticdConfig } from "./config.js";
+import type { SourceAdapter } from "@myceliumhq/index";
+import { loadSemanticdConfig, type SemanticdConfig } from "./config.js";
 import { createEngine } from "./engine.js";
 import { createSemanticdServer, type SyncState } from "./server.js";
 
-async function main(): Promise<void> {
-  const config = loadSemanticdConfig();
-  const adapter = await loadAdapter(config.adapterModule, config.adapterExport);
+export type { SemanticdConfig } from "./config.js";
+export { loadSemanticdConfig } from "./config.js";
+export type { Engine, SyncLogger, SyncSummary } from "./engine.js";
+export { createEngine } from "./engine.js";
+export { createSemanticdServer, type SyncState } from "./server.js";
+
+export type RunSemanticdOptions = {
+  config?: SemanticdConfig;
+  // On by default -- a sidecar gets SIGTERM routinely (every container
+  // redeploy/rescale), not exceptionally, and every real caller wants the
+  // same graceful-shutdown behavior (stop the sync timer, stop accepting
+  // new HTTP connections, let in-flight ones finish, close the index file)
+  // rather than reimplementing it per package. Set false only if the
+  // embedding process already owns SIGTERM/SIGINT itself and will call the
+  // returned handle's close() on its own.
+  handleSignals?: boolean;
+};
+
+export type SemanticdHandle = { close: () => Promise<void> };
+
+// The whole sidecar (embedding provider, index, periodic sync, HTTP
+// server) wired to a caller-supplied adapter -- real TypeScript, checked
+// at compile time by whichever package owns the adapter (tri, ppl, ...),
+// not a module specifier/export name resolved by a runtime import().
+export async function runSemanticd(
+  adapter: SourceAdapter<string | number>,
+  options: RunSemanticdOptions = {},
+): Promise<SemanticdHandle> {
+  const config = options.config ?? loadSemanticdConfig();
+  const handleSignals = options.handleSignals ?? true;
+
   const embeddingProvider = createEmbeddingProvider(config.embedding);
   const engine = await createEngine(adapter, embeddingProvider, config.indexPath);
 
@@ -41,19 +68,12 @@ async function main(): Promise<void> {
 
   const server = createSemanticdServer(engine, syncState, runSync);
   await server.listen(config.port);
-  console.log(`semanticd listening on :${config.port} -- adapter: ${config.adapterModule}`);
+  console.log(`semanticd listening on :${config.port}`);
 
-  // A sidecar gets SIGTERM routinely (every container redeploy/rescale),
-  // not exceptionally -- without a handler, Node's default behavior is
-  // immediate termination, hard-resetting in-flight requests and
-  // potentially interrupting a SQLite write to the index file mid-
-  // operation. Stop the timer, stop accepting new connections, let
-  // in-flight ones finish, then close the index handle before exiting.
-  let shuttingDown = false;
-  const shutdown = async (signal: string): Promise<void> => {
-    if (shuttingDown) return;
-    shuttingDown = true;
-    console.log(`[semanticd] ${signal} received, shutting down`);
+  let closed = false;
+  const close = async (): Promise<void> => {
+    if (closed) return;
+    closed = true;
     clearInterval(interval);
     try {
       await server.close();
@@ -63,13 +83,16 @@ async function main(): Promise<void> {
       );
     }
     engine.index.close();
-    process.exit(0);
   };
-  process.on("SIGTERM", () => void shutdown("SIGTERM"));
-  process.on("SIGINT", () => void shutdown("SIGINT"));
-}
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : String(error));
-  process.exitCode = 1;
-});
+  if (handleSignals) {
+    const shutdown = (signal: string) => {
+      console.log(`[semanticd] ${signal} received, shutting down`);
+      void close().then(() => process.exit(0));
+    };
+    process.on("SIGTERM", () => shutdown("SIGTERM"));
+    process.on("SIGINT", () => shutdown("SIGINT"));
+  }
+
+  return { close };
+}

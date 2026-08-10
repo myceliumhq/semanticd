@@ -3,37 +3,39 @@
 [![CI](https://github.com/myceliumhq/semanticd/actions/workflows/ci.yml/badge.svg)](https://github.com/myceliumhq/semanticd/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A generic semantic search sidecar. Syncs a local vector index over any source that ships a
-`SourceAdapter`, loaded by module name at runtime -- `semanticd` itself has no knowledge of any
-particular source (not Trilium, not paperless-ngx, not anything else).
+A library for running a semantic search sidecar over any source that ships a
+[`SourceAdapter`](https://github.com/myceliumhq/toolkit/tree/main/packages/index) --
+`semanticd` itself has no knowledge of any particular source (not Trilium, not paperless-ngx, not
+anything else). It has no executable of its own: the package that owns an adapter (e.g.
+`@myceliumhq/tri`, `@myceliumhq/ppl`) imports `runSemanticd()`, passes its own adapter in
+directly, and ships its own thin binary and container image (`tri-semanticd`, `ppl-semanticd`) --
+the adapter is wired in as real, compile-time-checked TypeScript, not resolved by a runtime
+module specifier.
 
-One `semanticd` process wraps exactly one source -- run it as a sidecar next to the service it
-indexes (a Trilium instance, a paperless-ngx instance, ...), each with its own port and index
-file, rather than one central process that has to know about every source type.
+One sidecar process wraps exactly one source -- run it next to the service it indexes (a Trilium
+instance, a paperless-ngx instance, ...), each with its own port and index file, rather than one
+central process that has to know about every source type.
 
-## Install
+## Use
 
-```bash
-npm install --global @myceliumhq/semanticd
+```ts
+import { runSemanticd } from "@myceliumhq/semanticd";
+import { createAdapter } from "./my-source-adapter.js";
+
+const handle = await runSemanticd(createAdapter());
+// handle.close() stops the sync timer, stops accepting new HTTP connections
+// (letting in-flight ones finish), and closes the index file. Wired to
+// SIGTERM/SIGINT automatically -- pass { handleSignals: false } to opt out
+// and call close() yourself instead.
 ```
 
-## Configure and run
-
-```bash
-export SEMANTICD_ADAPTER_MODULE=@myceliumhq/tri/semantic-adapter
-export EMBEDDING_PROVIDER=local   # zero-API-key CPU model; or openai-compatible, see below
-export TRILIUM_URL=https://trilium.example.com
-export TRILIUM_TOKEN=your-etapi-token
-
-semanticd
-```
-
-See [`.env.example`](./.env.example) for the full list of env vars.
+`runSemanticd`'s config (port, index path, sync interval, embedding provider) is read from env
+vars by default (`loadSemanticdConfig()`, exported separately if you want to inspect or override
+it before calling `runSemanticd`) -- see [`.env.example`](./.env.example) for the full list.
 
 ## Bring your own source
 
-Any module can be a source for `semanticd` -- it just needs to export a zero-argument factory
-returning a [`SourceAdapter`](https://github.com/myceliumhq/toolkit/tree/main/packages/index):
+Any package can be a source -- it just needs a factory returning a `SourceAdapter`:
 
 ```ts
 import type { SourceAdapter } from "@myceliumhq/index";
@@ -53,9 +55,8 @@ export function createAdapter(): SourceAdapter<string | number> {
 }
 ```
 
-Point `SEMANTICD_ADAPTER_MODULE` at it (an installed package name, or an absolute/relative file
-path -- relative paths resolve against the process's working directory). `@myceliumhq/tri` and
-`@myceliumhq/ppl` both ship a `./semantic-adapter` entrypoint following this exact convention.
+Then build a thin binary around it with `runSemanticd(createAdapter())`, the same way
+`@myceliumhq/tri` and `@myceliumhq/ppl` each do.
 
 ## HTTP API
 
@@ -69,8 +70,6 @@ path -- relative paths resolve against the process's working directory). `@mycel
 
 | Env var | Required | Notes |
 | --- | --- | --- |
-| `SEMANTICD_ADAPTER_MODULE` | yes | Module to load the adapter from |
-| `SEMANTICD_ADAPTER_EXPORT` | no | Export name of the zero-arg factory. Default `createAdapter` |
 | `SEMANTICD_PORT` | no | Default `4499` |
 | `SEMANTICD_INDEX_PATH` | no | Default `./semanticd.db` |
 | `SEMANTICD_SYNC_INTERVAL_MS` | no | Default `900000` (15 min) |
