@@ -9,6 +9,13 @@ export type SemanticdConfig = {
   port: number;
   indexPath: string;
   syncIntervalMs: number;
+  // Deletion-reconcile pass interval -- deliberately much coarser than
+  // syncIntervalMs: unlike incremental sync (a bounded watermark page),
+  // reconcile is a full sweep of every live id at the source, so running it
+  // as often as sync would multiply request volume against the source API
+  // for a class of change (deletions) that isn't time-sensitive the way
+  // content edits are.
+  reconcileIntervalMs: number;
   embedding: EmbeddingProviderConfig;
 };
 
@@ -71,6 +78,7 @@ export function loadSemanticdConfig(): SemanticdConfig {
     port: optionalPositiveInt("SEMANTICD_PORT", 4499),
     indexPath: process.env.SEMANTICD_INDEX_PATH ?? "./semanticd.db",
     syncIntervalMs: optionalPositiveInt("SEMANTICD_SYNC_INTERVAL_MS", 15 * 60_000),
+    reconcileIntervalMs: optionalPositiveInt("SEMANTICD_RECONCILE_INTERVAL_MS", 6 * 60 * 60_000),
     embedding: loadEmbeddingConfig(),
   };
 }

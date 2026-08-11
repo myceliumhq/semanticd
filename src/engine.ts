@@ -2,6 +2,7 @@ import type { EmbeddingProvider } from "@myceliumhq/embed";
 import {
   DEFAULT_SEMANTIC_INDEX_CONFIG,
   openSemanticIndex,
+  type ReconcileSummary,
   type SemanticIndex,
   type SourceAdapter,
 } from "@myceliumhq/index";
@@ -12,6 +13,12 @@ export type SyncLogger = { warn: (message: string) => void; info?: (message: str
 export type Engine = {
   index: SemanticIndex;
   sync: (logger?: SyncLogger) => Promise<SyncSummary>;
+  // Deletion backstop -- diffs the adapter's full live id set against what's
+  // stored and purges the difference. Resolves `{ supported: false, ... }`
+  // rather than throwing when the adapter has no listAllIds, so a caller can
+  // schedule this unconditionally without checking adapter capabilities
+  // itself.
+  reconcile: () => Promise<ReconcileSummary>;
 };
 
 // Wires a caller-supplied adapter (any source) to an open index --
@@ -38,5 +45,6 @@ export async function createEngine(
         skipped: s.skippedUnchanged,
         failed: s.failed,
       })),
+    reconcile: () => opened.index.reconcile(adapter),
   };
 }

@@ -5,6 +5,7 @@ const ENV_KEYS = [
   "SEMANTICD_PORT",
   "SEMANTICD_INDEX_PATH",
   "SEMANTICD_SYNC_INTERVAL_MS",
+  "SEMANTICD_RECONCILE_INTERVAL_MS",
   "EMBEDDING_PROVIDER",
   "EMBEDDING_BASE_URL",
   "EMBEDDING_API_KEY",
@@ -39,6 +40,7 @@ describe("loadSemanticdConfig", () => {
     expect(config.port).toBe(4499);
     expect(config.indexPath).toBe("./semanticd.db");
     expect(config.syncIntervalMs).toBe(15 * 60_000);
+    expect(config.reconcileIntervalMs).toBe(6 * 60 * 60_000);
   });
 
   it("requires baseUrl/apiKey/model/dimensions for the openai-compatible provider", () => {
@@ -47,16 +49,18 @@ describe("loadSemanticdConfig", () => {
     expect(() => loadSemanticdConfig()).toThrow(/EMBEDDING_BASE_URL/);
   });
 
-  it("respects SEMANTICD_PORT/INDEX_PATH/SYNC_INTERVAL_MS overrides", () => {
+  it("respects SEMANTICD_PORT/INDEX_PATH/SYNC_INTERVAL_MS/RECONCILE_INTERVAL_MS overrides", () => {
     process.env.EMBEDDING_PROVIDER = "local";
     process.env.SEMANTICD_PORT = "8080";
     process.env.SEMANTICD_INDEX_PATH = "/tmp/idx.db";
     process.env.SEMANTICD_SYNC_INTERVAL_MS = "60000";
+    process.env.SEMANTICD_RECONCILE_INTERVAL_MS = "120000";
 
     const config = loadSemanticdConfig();
     expect(config.port).toBe(8080);
     expect(config.indexPath).toBe("/tmp/idx.db");
     expect(config.syncIntervalMs).toBe(60000);
+    expect(config.reconcileIntervalMs).toBe(120000);
   });
 
   it("throws naming the var for a non-numeric SEMANTICD_PORT instead of propagating NaN", () => {
