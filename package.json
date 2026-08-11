@@ -1,6 +1,6 @@
 {
   "name": "@myceliumhq/semanticd",
-  "version": "0.1.0",
+  "version": "1.1.1",
   "description": "Library for running a semantic search sidecar over any source that ships a SourceAdapter -- sync, query, and HTTP server, generic over the adapter.",
   "type": "module",
   "packageManager": "pnpm@11.20.0",
