@@ -58,6 +58,24 @@ export function createAdapter(): SourceAdapter<string | number> {
 Then build a thin binary around it with `runSemanticd(createAdapter())`, the same way
 `@myceliumhq/tri` and `@myceliumhq/ppl` each do.
 
+## Querying a deployed sidecar
+
+Anything that wants to *query* a running sidecar (rather than run one itself) uses
+`createSemanticdClient` instead of hand-rolling the fetch() calls:
+
+```ts
+import { createSemanticdClient } from "@myceliumhq/semanticd";
+
+const client = createSemanticdClient("http://tri-semanticd:4499");
+const matches = await client.query("book recommendations", 5);
+const health = await client.health();
+await client.reindex();
+```
+
+This is how `tri`'s and `ppl`'s own standalone MCP servers talk to their `tri-semanticd`/
+`ppl-semanticd` sidecars (`TRILIUM_SEMANTICD_URL`/`PAPERLESS_SEMANTICD_URL`) instead of running a
+second, redundant embedding/index engine in-process.
+
 ## HTTP API
 
 | Endpoint | What it does |
