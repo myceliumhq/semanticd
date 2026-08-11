@@ -4,6 +4,10 @@ import { loadSemanticdConfig, type SemanticdConfig } from "./config.js";
 import { createEngine } from "./engine.js";
 import { createSemanticdServer, type SyncState } from "./server.js";
 
+// The client side: every host that wants to query a deployed semanticd
+// sidecar over HTTP (rather than run one itself) uses this instead of
+// reimplementing the three-endpoint fetch() calls per host.
+export { createSemanticdClient, type SemanticdClient, type SemanticdHealth } from "./client.js";
 export type { SemanticdConfig } from "./config.js";
 export { loadSemanticdConfig } from "./config.js";
 export type { Engine, SyncLogger, SyncSummary } from "./engine.js";
