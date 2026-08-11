@@ -64,11 +64,35 @@ export async function runSemanticd(
     }
   };
 
+  const runReconcile = async (): Promise<void> => {
+    try {
+      const result = await engine.reconcile();
+      if (!result.supported) return; // adapter has no listAllIds -- nothing to do
+      syncState.lastReconcileAt = new Date().toISOString();
+      syncState.lastReconcileDeleted = result.deleted;
+      console.log(
+        `[semanticd] reconcile complete (checked=${result.checked}, deleted=${result.deleted})`,
+      );
+    } catch (error) {
+      console.warn(
+        `[semanticd] reconcile failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  };
+
   // Kick off an initial pass in the background rather than blocking server
   // startup on a full backfill -- /health reports sync progress meanwhile.
   void runSync();
   const interval = setInterval(() => void runSync(), config.syncIntervalMs);
   interval.unref?.();
+
+  // Reconcile is a full sweep of live ids, unlike sync's bounded watermark
+  // page, so it runs on its own, coarser interval (see config.ts). Not run
+  // on startup alongside the initial sync -- that first backfill pass can
+  // itself take a while, and reconcile's deletion sweep isn't time-critical
+  // the way getting first content indexed is.
+  const reconcileInterval = setInterval(() => void runReconcile(), config.reconcileIntervalMs);
+  reconcileInterval.unref?.();
 
   const server = createSemanticdServer(engine, syncState, runSync);
   await server.listen(config.port);
@@ -79,6 +103,7 @@ export async function runSemanticd(
     if (closed) return;
     closed = true;
     clearInterval(interval);
+    clearInterval(reconcileInterval);
     try {
       await server.close();
     } catch (error) {

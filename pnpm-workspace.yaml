@@ -14,5 +14,5 @@ allowBuilds:
 
 minimumReleaseAgeExclude:
   - '@myceliumhq/dev-config@0.1.0'
-  - '@myceliumhq/embed@0.1.0'
-  - '@myceliumhq/index@0.1.0'
+  - '@myceliumhq/embed@0.1.0 || 1.0.0'
+  - '@myceliumhq/index@0.1.0 || 1.1.1'

@@ -1,7 +1,13 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { Engine } from "./engine.js";
 
-export type SyncState = { lastSyncAt?: string; lastError?: string; running: boolean };
+export type SyncState = {
+  lastSyncAt?: string;
+  lastError?: string;
+  running: boolean;
+  lastReconcileAt?: string;
+  lastReconcileDeleted?: number;
+};
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   const payload = JSON.stringify(body);
@@ -24,6 +30,8 @@ function handleHealth(engine: Engine, syncState: SyncState, res: ServerResponse)
     syncing: syncState.running,
     lastSyncAt: syncState.lastSyncAt,
     lastError: syncState.lastError,
+    lastReconcileAt: syncState.lastReconcileAt,
+    lastReconcileDeleted: syncState.lastReconcileDeleted,
   });
 }
 
